@@ -73,11 +73,11 @@ void setup() {
   server.serveStatic("/", SPIFFS, "/");
 
   // Request for the latest sensor readings
-  server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request){
-    String json = getSensorReadings();
-    request->send(200, "application/json", json);
-    json = String();
-  });
+  // server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request){
+  //   String json = getSensorReadings();
+  //   request->send(200, "application/json", json);
+  //   json = String();
+  // });
 
   events.onConnect([](AsyncEventSourceClient *client){
     if(client->lastId()){

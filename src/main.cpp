@@ -23,17 +23,19 @@ unsigned long heart_beat_last_time = 0;
 unsigned long heart_beat_time_delay = 100;
 
 // Rotary Encoder Variables
-
-volatile int rotary_encoder_counter = 0;
+int rotary_encoder_segments_size_in_degree = 20;
+volatile int rotary_encoder_segment_counter = 0;
 volatile unsigned long rotary_encoder_last_time;  // for debouncing
-int previous_rotary_encoder_counter;
+int previous_rotary_encoder_segment_counter;
 
 #define kRotaryEncoderClockPin 35
 #define kRotaryEncoderDataPin 34
 
+
+
 // Get Sensor Readings and return JSON object
 String getSensorReadings(){
-  readings["rope"] = rotary_encoder_counter;
+  readings["rotation"] = rotary_encoder_segment_counter * rotary_encoder_segments_size_in_degree;
   // readings["speed"] =  random(-50, 100);
   String jsonString = JSON.stringify(readings);
   return jsonString;
@@ -65,14 +67,14 @@ void initWiFiAP() {
   Serial.println(WiFi.localIP());
 }
 
-void ISR_encoderChange() {
+void ISREncoderChange() {
   if ((millis() - rotary_encoder_last_time) < 50)  // debounce
     return;
 
   if (digitalRead(kRotaryEncoderDataPin) == HIGH) {
-    rotary_encoder_counter--;
+    rotary_encoder_segment_counter--;
   } else {
-    rotary_encoder_counter++;
+    rotary_encoder_segment_counter++;
   }
 
   rotary_encoder_last_time = millis();
@@ -86,7 +88,7 @@ void setup() {
   Serial.println("Init Sensors....");
   pinMode(kRotaryEncoderClockPin, INPUT);
   pinMode(kRotaryEncoderDataPin, INPUT);
-  attachInterrupt(digitalPinToInterrupt(kRotaryEncoderClockPin), ISR_encoderChange, RISING);
+  attachInterrupt(digitalPinToInterrupt(kRotaryEncoderClockPin), ISREncoderChange, RISING);
   
   initWiFiAP();
   initSPIFFS();

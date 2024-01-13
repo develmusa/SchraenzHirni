@@ -79,7 +79,7 @@ const gaugeRope = new LinearGauge({
     barBeginCircle: false,
     colorValueBoxShadow: false,
     colorValueBoxBackground: false,
-    value: 180,
+    value: 0,
     valueBox: true,
     valueBoxStroke: 0,
     valueBoxWidth: 100,
@@ -156,7 +156,7 @@ const gaugeSpeed = new LinearGauge({
     valueBoxBorderRadius: 0,
     valueInt: 2,
     valueDec: 0,
-    value: 25,
+    value: 0,
 }).draw();
 
 const gaugeTemp = new LinearGauge({
@@ -225,34 +225,40 @@ const gaugeTemp = new LinearGauge({
     valueBoxBorderRadius: 0,
     valueInt: 2,
     valueDec: 0,
-    value: 25,
+    value: 0,
 }).draw();
 
-let lastDistance = 0;
+let lengthRopeLength = 0;
 let lastTimestamp = Date.now();
 
-function calculateSpeed(currentDistance) {
+let readings = null;
+
+function calculateSpeed(currentRopeLength) {
   const currentTime = Date.now();
   const timeElapsed = (currentTime - lastTimestamp) / 1000; // time in seconds
 
-  if (timeElapsed === 0) {
-    return 0; // To avoid division by zero
-  }
-
-  const distanceCovered = currentDistance - lastDistance;
+  const distanceCovered = currentRopeLength - lengthRopeLength;
   const speed = distanceCovered / timeElapsed; // Speed = Distance / Time
 
   // Update the last distance and last timestamp for the next calculation
-  lastDistance = currentDistance;
+  lengthRopeLength = currentRopeLength;
   lastTimestamp = currentTime;
 
   return speed;
 }
 
+
+
+function updateSpeed() {
+    if (readings != null)
+        rope_length = readings.rotation / rotationConversionFactor;
+        let speed = calculateSpeed(rope_length)
+        gaugeSpeed.value = speed
+  }
+
 let lastHeartBeat = Date.now();
 
 function heartBeatCheck() {
-    console.log("heart beat check")
     const currentTime = Date.now();
     const timeElapsed = (currentTime - lastHeartBeat); // time in ms
   
@@ -262,10 +268,18 @@ function heartBeatCheck() {
 }
 
 let heartBeatIntervalId = 0;
+const heartBeatIntervalTime = 1000
+let speedIntervalId = 0;
+const speedIntervalTime = 500
+
+const rotationConversionFactor = 20 //rotation degrees to meter rope
+
 
 if (!!window.EventSource) {
   var source = new EventSource('/events');
-  heartBeatIntervalId = setInterval(heartBeatCheck(), 1000);
+  heartBeatIntervalId = setInterval(heartBeatCheck, heartBeatIntervalTime);
+  speedIntervalId = setInterval(updateSpeed, speedIntervalTime);
+
   
   source.addEventListener('open', function(e) {
     console.log("Events Connected");
@@ -288,10 +302,10 @@ if (!!window.EventSource) {
   
   source.addEventListener('new_readings', function(e) {
     // console.log("new_readings", e.data);
-    var myObj = JSON.parse(e.data);
-    console.log(myObj);
-    gaugeRope.value = myObj.rope;
-    gaugeSpeed.value = calculateSpeed(myObj.rope);
+    readings = JSON.parse(e.data);
+    console.log(readings);
+    gaugeRope.value = readings.rotation / rotationConversionFactor;
+    // gaugeSpeed.value = calculateSpeed(rope_meter);
   }, false);
 
     source.addEventListener('message', function(e) {

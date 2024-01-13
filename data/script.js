@@ -23,74 +23,6 @@ let calculateGaugeWidth = () => {
     return document.querySelector(".content").clientWidth / gaugeCount
   }
 
-function generateGaugeRope (width, height) {
-    new LinearGauge({
-        renderTo: 'gauge-rope',
-        width: width,
-        height: height,
-        titel: "Rope Tension",
-        units: "m",
-        minValue: 0,
-        maxValue: 300,
-        majorTicks: [
-            "0",
-            "50",
-            "100",
-            "150",
-            "200",
-            "250",
-            "300"
-        ],
-        exactTicks: true,
-        minorTicks: 10,
-        strokeTicks: true,
-        // majorTicksInt: 10,
-        // majorTicksDec: 0,
-        highlightsWidth: 5,
-        numbersMargin: 0,
-        highlights: [
-            {
-                "from": 200,
-                "to": 300,
-                "color": "rgba(255, 0, 0, .75)"
-            }
-        ],
-        colorPlate: "#fff",
-        animationDuration: 100,
-        animationRule: "linear",
-        tickSide: "left",
-        numberSide: "left",
-        needleType: "line",
-        needleSide: "left",
-        needleShadow: false,
-        needleWidth: 10,
-        needleStart: 0,
-        needleEnd: 150,
-        colorNeedle: "rgba(255, 0, 255, 1)",
-        borders: false,
-        borderOuterWidth: 5,
-        borderMiddleWidth: 10,
-        borderInnerWidth: 15,
-        borderShadowWidth: 5,
-        barWidth: 20,
-        barStrokeWidth: 7,
-        barProgress: true,
-        barShadow: 0,
-        barBeginCircle: false,
-        colorValueBoxShadow: false,
-        colorValueBoxBackground: false,
-        value: 180,
-        valueBox: true,
-        valueBoxStroke: 0,
-        valueBoxWidth: 100,
-        valueText: false,
-        valueTextShadow: false,
-        valueBoxBorderRadius: 0,
-        valueInt: 2,
-        valueDec: 0,
-    }).draw();
-
-
 // Create Temperature Gauge
 // https://canvas-gauges.com/documentation/user-guide/configuration
 const gaugeRope = new LinearGauge({
@@ -125,8 +57,7 @@ const gaugeRope = new LinearGauge({
         }
     ],
     colorPlate: "#fff",
-    animationDuration: 100,
-    animationRule: "linear",
+    animation: false,
     tickSide: "left",
     numberSide: "left",
     needleType: "line",
@@ -195,8 +126,7 @@ const gaugeSpeed = new LinearGauge({
         }
     ],
     colorPlate: "#fff",
-    animationDuration: 100,
-    animationRule: "linear",
+    animation: false,
     tickSide: "left",
     numberSide: "left",
     needleType: "line",
@@ -265,8 +195,7 @@ const gaugeTemp = new LinearGauge({
         }
     ],
     colorPlate: "#fff",
-    animationDuration: 100,
-    animationRule: "linear",
+    animation: false,
     tickSide: "left",
     numberSide: "left",
     needleType: "line",
@@ -299,9 +228,44 @@ const gaugeTemp = new LinearGauge({
     value: 25,
 }).draw();
 
+let lastDistance = 0;
+let lastTimestamp = Date.now();
+
+function calculateSpeed(currentDistance) {
+  const currentTime = Date.now();
+  const timeElapsed = (currentTime - lastTimestamp) / 1000; // time in seconds
+
+  if (timeElapsed === 0) {
+    return 0; // To avoid division by zero
+  }
+
+  const distanceCovered = currentDistance - lastDistance;
+  const speed = distanceCovered / timeElapsed; // Speed = Distance / Time
+
+  // Update the last distance and last timestamp for the next calculation
+  lastDistance = currentDistance;
+  lastTimestamp = currentTime;
+
+  return speed;
+}
+
+let lastHeartBeat = Date.now();
+
+function heartBeatCheck() {
+    console.log("heart beat check")
+    const currentTime = Date.now();
+    const timeElapsed = (currentTime - lastHeartBeat); // time in ms
+  
+    if (timeElapsed > 1000 ) {
+        setToast("Verbindig unterbroche");
+    }
+}
+
+let heartBeatIntervalId = 0;
 
 if (!!window.EventSource) {
   var source = new EventSource('/events');
+  heartBeatIntervalId = setInterval(heartBeatCheck(), 1000);
   
   source.addEventListener('open', function(e) {
     console.log("Events Connected");
@@ -311,22 +275,30 @@ if (!!window.EventSource) {
   source.addEventListener('error', function(e) {
     if (e.target.readyState != EventSource.OPEN) {
       console.log("Events Disconnected");
-      setToast("Verbindig unterbroche");
+      clearInterval(intervalId);
+      setToast("Verbindig trennt");
     }
   }, false);
   
-  source.addEventListener('message', function(e) {
-    console.log("message", e.data);
+
+
+  source.addEventListener('heart_beat', function(e) {
+    lastHeartBeat = Date.now();
   }, false);
   
   source.addEventListener('new_readings', function(e) {
-    console.log("new_readings", e.data);
+    // console.log("new_readings", e.data);
     var myObj = JSON.parse(e.data);
     console.log(myObj);
     gaugeRope.value = myObj.rope;
-    gaugeSpeed.value = myObj.speed;
+    gaugeSpeed.value = calculateSpeed(myObj.rope);
   }, false);
+
+    source.addEventListener('message', function(e) {
+        console.log("unknown message received", e.data);
+        }, false);
 }
+
 
 
 
@@ -356,25 +328,6 @@ function setToast(message) {
     x.className = "show";
     setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
   }
-
-// Function to get current readings on the webpage when it loads for the first time
-// Get current sensor readings when the page loads  
-// window.addEventListener('load', getReadings);
-// function getReadings(){
-//   var xhr = new XMLHttpRequest();
-//   xhr.onreadystatechange = function() {
-//     if (this.readyState == 4 && this.status == 200) {
-//       var myObj = JSON.parse(this.responseText);
-//       console.log(myObj);
-//       var rope = myObj.rope;
-//       var speed = myObj.speed;
-//       gaugeRope.value = rope;
-//       gaugeSpeed.value = speed;
-//     }
-//   }; 
-//   xhr.open("GET", "/readings", true);
-//   xhr.send();
-// }
 
 
 // Create a reference for the Wake Lock.

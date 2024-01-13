@@ -19,15 +19,12 @@ AsyncEventSource events("/events");
 JSONVar readings;
 
 // Timer variables
-unsigned long lastTime = 0;
-unsigned long timerDelay = 100;
+unsigned long heart_beat_last_time = 0;
+unsigned long heart_beat_time_delay = 100;
 
 // Rotary Encoder Variables
-#define kRotaryEncoderDirectionCW 0   // clockwise direction
-#define kRotaryEncoderDirectionCCW 1  // counter-clockwise direction
 
 volatile int rotary_encoder_counter = 0;
-volatile int rotary_encoder_direction = kRotaryEncoderDirectionCW;
 volatile unsigned long rotary_encoder_last_time;  // for debouncing
 int previous_rotary_encoder_counter;
 
@@ -36,8 +33,8 @@ int previous_rotary_encoder_counter;
 
 // Get Sensor Readings and return JSON object
 String getSensorReadings(){
-  readings["rope"] = random(0, 300);
-  readings["speed"] =  random(-50, 100);
+  readings["rope"] = rotary_encoder_counter;
+  // readings["speed"] =  random(-50, 100);
   String jsonString = JSON.stringify(readings);
   return jsonString;
 }
@@ -69,17 +66,13 @@ void initWiFiAP() {
 }
 
 void ISR_encoderChange() {
-  if ((millis() - rotary_encoder_last_time) < 50)  // debounce time is 50ms
+  if ((millis() - rotary_encoder_last_time) < 50)  // debounce
     return;
 
   if (digitalRead(kRotaryEncoderDataPin) == HIGH) {
-    // the encoder is rotating in counter-clockwise direction => decrease the counter
     rotary_encoder_counter--;
-    rotary_encoder_direction = kRotaryEncoderDirectionCCW;
   } else {
-    // the encoder is rotating in clockwise direction => increase the counter
     rotary_encoder_counter++;
-    rotary_encoder_direction = kRotaryEncoderDirectionCW;
   }
 
   rotary_encoder_last_time = millis();
@@ -95,56 +88,50 @@ void setup() {
   pinMode(kRotaryEncoderDataPin, INPUT);
   attachInterrupt(digitalPinToInterrupt(kRotaryEncoderClockPin), ISR_encoderChange, RISING);
   
-  // initWiFiAP();
-  // initSPIFFS();
+  initWiFiAP();
+  initSPIFFS();
 
-  // // Web Server Root URL
-  // server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-  //   request->send(SPIFFS, "/index.html", "text/html");
+  // Web Server Root URL
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/index.html", "text/html");
+  });
+
+  server.serveStatic("/", SPIFFS, "/");
+
+  // Request for the latest sensor readings
+  // server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request){
+  //   String json = getSensorReadings();
+  //   request->send(200, "application/json", json);
+  //   json = String();
   // });
 
-  // server.serveStatic("/", SPIFFS, "/");
+  events.onConnect([](AsyncEventSourceClient *client){
+    if(client->lastId()){
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    // send event with message "hello!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("hello, hirni is connected!", NULL, millis(), 10000);
+  });
+  server.addHandler(&events);
 
-  // // Request for the latest sensor readings
-  // // server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request){
-  // //   String json = getSensorReadings();
-  // //   request->send(200, "application/json", json);
-  // //   json = String();
-  // // });
-
-  // events.onConnect([](AsyncEventSourceClient *client){
-  //   if(client->lastId()){
-  //     Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
-  //   }
-  //   // send event with message "hello!", id current millis
-  //   // and set reconnect delay to 1 second
-  //   client->send("hello!", NULL, millis(), 10000);
-  // });
-  // server.addHandler(&events);
-
-  // // Start server
-  // server.begin();
+  // Start server
+  server.begin();
 }
 
+String last_sensor_reading = getSensorReadings();
+
 void loop() {
+  String current_sensor_reading = getSensorReadings();
 
-  if (previous_rotary_encoder_counter != rotary_encoder_counter) {
-    Serial.print("DIRECTION: ");
-    if (rotary_encoder_direction == kRotaryEncoderDirectionCW)
-      Serial.print("Clockwise");
-    else
-      Serial.print("Counter-clockwise");
-
-    Serial.print(" | COUNTER: ");
-    Serial.println(rotary_encoder_counter);
-
-    previous_rotary_encoder_counter = rotary_encoder_counter;
+  if (current_sensor_reading != last_sensor_reading) {
+    last_sensor_reading = current_sensor_reading;
+    events.send(getSensorReadings().c_str(),"new_readings" ,millis());
   }
 
-  // if ((millis() - lastTime) > timerDelay) {
-  //   // Send Events to the client with the Sensor Readings Every 10 seconds
-  //   events.send("ping",NULL,millis());
-  //   events.send(getSensorReadings().c_str(),"new_readings" ,millis());
-  //   lastTime = millis();
-  // }
+  if ((millis() - heart_beat_last_time) > heart_beat_time_delay) {
+    // Send Events to the client with the Sensor Readings Every 10 seconds
+    events.send(String(millis()).c_str(),"heart_beat",millis());
+    heart_beat_last_time = millis();
+  }
 }

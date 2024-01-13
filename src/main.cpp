@@ -32,28 +32,46 @@ int previous_rotary_encoder_segment_counter;
 #define kRotaryEncoderDataPin 34
 
 #include "max6675.h"
-int thermoDO = 19;
-int thermoCS = 23;
-int thermoCLK = 5;
 
-unsigned long thermocouple_last_query;
+
+int thermoDO_water = 19;
+int thermoCS_water = 23;
+int thermoCLK_water = 5;
+
+int thermoDO_oil = 12;
+int thermoCS_oil = 13;
+int thermoCLK_oil = 15;
+
 int thermocouple_query_time_delay = 1000;
-long thermocouple_last_reading = 0;
+unsigned long thermocouple_water_last_query;
+unsigned long thermocouple_oil_last_query;
+long thermocouple_water_last_reading = 0;
+long thermocouple_oil_last_reading = 0;
 
-MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
+MAX6675 thermocouple_water(thermoCLK_water, thermoCS_water, thermoDO_water);
+MAX6675 thermocouple_oil(thermoCLK_oil, thermoCS_oil, thermoDO_oil);
 
-long getThermocoupleReading() {
-  if ((millis() - thermocouple_last_query) > thermocouple_query_time_delay) {
-    thermocouple_last_reading = thermocouple.readCelsius();
-    thermocouple_last_query = millis();
+long getThermocoupleWaterReading() {
+  if ((millis() - thermocouple_water_last_query) > thermocouple_query_time_delay) {
+    thermocouple_water_last_reading = thermocouple_water.readCelsius();
+    thermocouple_water_last_query = millis();
   }
-  return thermocouple_last_reading;
+  return thermocouple_water_last_reading;
+}
+
+long getThermocoupleOilReading() {
+  if ((millis() - thermocouple_oil_last_query) > thermocouple_query_time_delay) {
+    thermocouple_oil_last_reading = thermocouple_oil.readCelsius();
+    thermocouple_oil_last_query = millis();
+  }
+  return thermocouple_oil_last_reading;
 }
 
 // Get Sensor Readings and return JSON object
 String getSensorReadings(){
   readings["rotation"] = rotary_encoder_segment_counter * rotary_encoder_segments_size_in_degree;
-  readings["water_temp"] =  getThermocoupleReading();
+  readings["water_temp"] =  getThermocoupleWaterReading();
+  readings["oil_temp"] =  getThermocoupleOilReading();
   String jsonString = JSON.stringify(readings);
   return jsonString;
 }

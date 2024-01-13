@@ -159,8 +159,77 @@ const gaugeSpeed = new LinearGauge({
     value: 0,
 }).draw();
 
-const gaugeTemp = new LinearGauge({
+const gaugeWaterTemp = new LinearGauge({
     renderTo: 'gauge-water-temp',
+    width: calculateGaugeWidth(),
+    height: getGaugeHeigth(),
+    units: "°C",
+    minValue: -30,
+    maxValue: 80,
+    majorTicks: [
+        -30,
+        -20,
+        -10,
+        0,
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80
+    ],
+    exactTicks: true,
+    minorTicks: 5,
+    strokeTicks: true,
+    // majorTicksInt: 10,
+    // majorTicksDec: 0,
+    highlightsWidth: 5,
+    numbersMargin: 0,
+    highlights: [
+        {
+            "from": -30,
+            "to": 0,
+            "color": "rgba(0, 0, 255, .75)"
+        }
+    ],
+    colorPlate: "#fff",
+    animation: false,
+    tickSide: "left",
+    numberSide: "left",
+    needleType: "line",
+    needleSide: "left",
+    needleShadow: false,
+    needleWidth: 10,
+    needleStart: 0,
+    needleEnd: 150,
+    colorNeedle: "rgba(255, 0, 255, 1)",
+    borders: false,
+    borderOuterWidth: 5,
+    borderMiddleWidth: 10,
+    borderInnerWidth: 15,
+    borderShadowWidth: 5,
+    barWidth: 20,
+    barStrokeWidth: 7,
+    barProgress: true,
+    barShadow: 0,
+    barBeginCircle: false,
+    colorValueBoxShadow: false,
+    colorValueBoxBackground: false,
+    valueBox: true,
+    valueBoxStroke: 0,
+    valueBoxWidth: 100,
+    valueText: false,
+    valueTextShadow: false,
+    valueBoxBorderRadius: 0,
+    valueInt: 2,
+    valueDec: 0,
+    value: 0,
+}).draw();
+
+const gaugeOilTemp = new LinearGauge({
+    renderTo: 'gauge-oil-temp',
     width: calculateGaugeWidth(),
     height: getGaugeHeigth(),
     units: "°C",
@@ -312,7 +381,8 @@ if (!!window.EventSource) {
     readings = JSON.parse(e.data);
     console.log(readings);
     gaugeRope.value = readings.rotation / rotationConversionFactor;
-    gaugeTemp.value = readings.water_temp;
+    gaugeWaterTemp.value = readings.water_temp;
+    gaugeOilTemp.value = readings.oil_temp;
     // gaugeSpeed.value = calculateSpeed(rope_meter);
   }, false);
 

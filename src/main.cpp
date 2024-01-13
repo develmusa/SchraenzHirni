@@ -31,12 +31,29 @@ int previous_rotary_encoder_segment_counter;
 #define kRotaryEncoderClockPin 35
 #define kRotaryEncoderDataPin 34
 
+#include "max6675.h"
+int thermoDO = 19;
+int thermoCS = 23;
+int thermoCLK = 5;
 
+unsigned long thermocouple_last_query;
+int thermocouple_query_time_delay = 1000;
+long thermocouple_last_reading = 0;
+
+MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
+
+long getThermocoupleReading() {
+  if ((millis() - thermocouple_last_query) > thermocouple_query_time_delay) {
+    thermocouple_last_reading = thermocouple.readCelsius();
+    thermocouple_last_query = millis();
+  }
+  return thermocouple_last_reading;
+}
 
 // Get Sensor Readings and return JSON object
 String getSensorReadings(){
   readings["rotation"] = rotary_encoder_segment_counter * rotary_encoder_segments_size_in_degree;
-  // readings["speed"] =  random(-50, 100);
+  readings["water_temp"] =  getThermocoupleReading();
   String jsonString = JSON.stringify(readings);
   return jsonString;
 }

@@ -160,7 +160,7 @@ const gaugeSpeed = new LinearGauge({
 }).draw();
 
 const gaugeTemp = new LinearGauge({
-    renderTo: 'gauge-oil-temp',
+    renderTo: 'gauge-water-temp',
     width: calculateGaugeWidth(),
     height: getGaugeHeigth(),
     units: "°C",
@@ -250,10 +250,13 @@ function calculateSpeed(currentRopeLength) {
 
 
 function updateSpeed() {
-    if (readings != null)
+    if (readings)
         rope_length = readings.rotation / rotationConversionFactor;
         let speed = calculateSpeed(rope_length)
         gaugeSpeed.value = speed
+        if (speed < 10) {
+            // requestAnimationFrame(() => updateShepardTone(speed));
+        }
   }
 
 let lastHeartBeat = Date.now();
@@ -309,6 +312,7 @@ if (!!window.EventSource) {
     readings = JSON.parse(e.data);
     console.log(readings);
     gaugeRope.value = readings.rotation / rotationConversionFactor;
+    gaugeTemp.value = readings.water_temp;
     // gaugeSpeed.value = calculateSpeed(rope_meter);
   }, false);
 
@@ -325,6 +329,7 @@ splashScreen.addEventListener('click',()=>{
     },610)
     document.querySelector(".content").requestFullscreen();
     screen.orientation.lock("landscape-primary");
+    startSound();
 })
 
 function setToast(message) {	
@@ -333,3 +338,69 @@ function setToast(message) {
     x.className = "show";
     setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
   }
+
+
+  let audioCtx;
+  const oscillators = [];
+  const gainNodes = [];
+  const numOscillators = 16;
+  const baseFrequency = 440;
+  let toneChangeRate = 20; // Adjust this to control the speed of the pitch change
+  
+  function startSound() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  
+      for (let i = 0; i < numOscillators; i++) {
+          const oscillator = audioCtx.createOscillator();
+          oscillator.type = 'sine';
+  
+          const gainNode = audioCtx.createGain();
+          gainNode.gain.value = 0.5;
+  
+          oscillator.connect(gainNode).connect(audioCtx.destination);
+          oscillators.push(oscillator);
+          gainNodes.push(gainNode);
+      }
+  
+      oscillators.forEach((oscillator, index) => {
+        let initialFrequency = baseFrequency * Math.pow(2, index - numOscillators / 2);
+    
+        // Constrain the initial frequency within the audible range of 20 Hz to 20 kHz
+        initialFrequency = Math.min(Math.max(initialFrequency, 20), 20000);
+    
+        oscillator.frequency.value = initialFrequency;
+        oscillator.start();
+    });
+
+    //   requestAnimationFrame(() => updateShepardTone(toneChangeRate));
+
+  
+  }
+
+function updateShepardTone(rate) {
+    const currentTime = audioCtx.currentTime;
+    const transitionTime = 0.01; // Time in seconds for smooth transitions
+
+    for (let i = 0; i < numOscillators; i++) {
+        let frequencyChangeFactor = Math.pow(2, rate / 1000);
+        let newFrequency = oscillators[i].frequency.value * frequencyChangeFactor;
+
+        newFrequency = Math.min(Math.max(newFrequency, 20), 20000);
+
+        if (newFrequency < baseFrequency / 2) {
+            newFrequency *= 2;
+        } else if (newFrequency > baseFrequency * 2) {
+            newFrequency /= 2;
+        }
+
+        // Smooth frequency transition
+        oscillators[i].frequency.linearRampToValueAtTime(newFrequency, currentTime + transitionTime);
+
+        // Calculate new gain value
+        let newGain = 1 - Math.abs(Math.log2(newFrequency / baseFrequency) % 1);
+
+        // Smooth gain transition
+        gainNodes[i].gain.linearRampToValueAtTime(newGain, currentTime + transitionTime);
+    }
+    requestAnimationFrame(() => updateShepardTone(rate));
+}

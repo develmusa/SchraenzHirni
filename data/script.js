@@ -261,9 +261,13 @@ let lastHeartBeat = Date.now();
 function heartBeatCheck() {
     const currentTime = Date.now();
     const timeElapsed = (currentTime - lastHeartBeat); // time in ms
-  
+    
+    var x = document.getElementById("connection-snackbar");
+    x.className = "show";
     if (timeElapsed > 1000 ) {
-        setToast("Verbindig unterbroche");
+        x.textContent = "Verbindig unterbroche";
+    } else {
+        x.className = x.className.replace("show", "");
     }
 }
 

@@ -68,7 +68,7 @@ void initWiFiAP() {
 }
 
 void ISREncoderChange() {
-  if ((millis() - rotary_encoder_last_time) < 50)  // debounce
+  if ((millis() - rotary_encoder_last_time) < 5)  // debounce
     return;
 
   if (digitalRead(kRotaryEncoderDataPin) == HIGH) {
